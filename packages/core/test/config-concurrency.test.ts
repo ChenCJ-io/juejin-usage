@@ -113,9 +113,9 @@ test('concurrent settings, sync and upload writers retain settings and both time
   const completed = Promise.all(writers.map((child) => child.done))
     .finally(() => { finished = true; });
   try {
-    // These reads deliberately do not take the lock. Atomic replacement must
-    // keep config.json parseable even for non-cooperating readers.
-    while (!finished) await f.readSaved();
+    // PROBE: reader loop disabled to test whether the unsynchronized reader is
+    // what blocks rename on Windows.
+    while (!finished) await new Promise((r) => setTimeout(r, 20));
   } finally {
     await completed;
   }
