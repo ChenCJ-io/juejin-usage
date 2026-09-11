@@ -27,7 +27,7 @@ jobs:
         # windows-latest 还进不来：core 另有 7 个与本仓库路径无关的用例在 Windows 上
         # 挂（config 原子写 rename EPERM、kilocode/roocode 的 roots、runtime-pid 一组），
         # 已单独记 issue。修完再往这里加一行。
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -55,6 +55,20 @@ jobs:
         run: pnpm --filter @juejin-opensource/jusage-desktop typecheck
 
       # 四个包分开跑，红的时候一眼能看出是哪个包。
+      - name: 「临时」Windows 诊断
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Write-Host "--- where wmic ---"
+          (Get-Command wmic -ErrorAction SilentlyContinue) ?? "wmic NOT FOUND"
+          Write-Host "--- Get-CimInstance Win32_Process ---"
+          Get-CimInstance Win32_Process -Filter "ProcessId=$PID" | Select-Object ProcessId,CreationDate,CommandLine | Format-List
+          Write-Host "--- node readProcessStart/readProcessArgs ---"
+          node --input-type=module -e "const m = await import('./packages/core/dist/runtime-pid.js'); console.log('start=', JSON.stringify(m.readProcessStart(process.pid))); console.log('args=', JSON.stringify(m.readProcessArgs(process.pid))); console.log('alive=', m.isPidAlive(process.pid));"
+          Write-Host "--- OS ---"
+          [System.Environment]::OSVersion.VersionString
+
       - name: 测试 core
         run: pnpm --filter @juejin-opensource/jusage-core test
 
